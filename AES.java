@@ -12,17 +12,17 @@ public class AES implements AbstractAES
     private int[][][] s = new int[2][4][4];
     private int[] w;
     private static int[][]gf = {{2, 3, 1, 1},
-        {1, 2, 3, 1},
-        {1, 1, 2, 3},
-        {3, 1, 1, 2}};
+                                {1, 2, 3, 1},
+                                {1, 1, 2, 3},
+                                {3, 1, 1, 2}};
     private static int[][]invgf = {{0x0e, 0x0b, 0x0d, 0x09},
-        {0x09, 0x0e, 0x0b, 0x0d},
-        {0x0d, 0x09, 0x0e, 0x0b},
-        {0x0b, 0x0d, 0x09, 0x0e}};
+                                   {0x09, 0x0e, 0x0b, 0x0d},
+                                   {0x0d, 0x09, 0x0e, 0x0b},
+                                   {0x0b, 0x0d, 0x09, 0x0e}};
     private static int[] rcon = {0x01000000, 0x02000000, 0x04000000, 0x08000000, 
-        0x10000000, 0x20000000, 0x40000000, 0x80000000, 
-        0x1B000000, 0x36000000, 0x6C000000, 0xD8000000,
-        0xAB000000, 0x4D000000, 0x9A000000};
+                                 0x10000000, 0x20000000, 0x40000000, 0x80000000, 
+                                 0x1B000000, 0x36000000, 0x6C000000, 0xD8000000,
+                                 0xAB000000, 0x4D000000, 0x9A000000};
 
     // Constructs an AES cipher using a specific key
     public AES(byte[] z) throws Exception
@@ -38,7 +38,6 @@ public class AES implements AbstractAES
     // Encrypts a 128-bit (16-byte) plaintext block using this AES cipher
     public byte[] encrypt(byte[] x)
     {
-
         if(x.length != Nb*4) 
             throw new IllegalArgumentException("Illegal block length");
 
@@ -56,19 +55,16 @@ public class AES implements AbstractAES
 
         addRoundKey(s[current], 0);
 
-
         for(int i = 1 ; i < Nr ; i++)
         {
             subBytes(s[current]);
-            shiftRows(s[current]);
+            shiftRows(s);
             mixColumns(s);
-            current ^= 1;
             addRoundKey(s[current], i);
-
         }
 
         subBytes(s[current]);
-        shiftRows(s[current]);
+        shiftRows(s);
         addRoundKey(s[current], Nr);
 
         n = 0;
@@ -105,14 +101,14 @@ public class AES implements AbstractAES
 
         for(int i = Nr-1 ; i > 0 ; i--)
         {
-            invShiftRows(s[current]);
+            invShiftRows(s);
             invSubBytes(s[current]);
             addRoundKey(s[current], i);
             invMixColumns(s);
             current ^= 1;
         }
 
-        invShiftRows(s[current]);
+        invShiftRows(s);
         invSubBytes(s[current]);
         addRoundKey(s[current], 0);
 
@@ -167,39 +163,20 @@ public class AES implements AbstractAES
     }
 
     // Applies an inverse cyclic shift to the last 3 rows of a state matrix
-    private int[][] invShiftRows(int [][] s)
+    private int[][] invShiftRows(int[][][] s)
     {
-        int temp1 = 0, temp2 = 0;
-
-        for(int j = 0 ; j < Nb ; j+=4)
+        for(int i = 0 ; i < 4 ; i++)
         {
-            for(int i = 1 ; i < 4 ; i++)
+            for(int j = 0 ; j < 4 ; j++)
             {
-                switch(i)
-                {
-                    case 1: temp1 = s[i][j+3];
-                            s[i][j+3] = s[i][j+2];
-                            s[i][j+2] = s[i][j+1];
-                            s[i][j+1] = s[i][j];
-                            s[i][j] = temp1;
-                            break;
-                    case 2: temp1 = s[i][j];
-                            temp2 = s[i][j+1];
-                            s[i][j] = s[i][j+2];
-                            s[i][j+1] = s[i][j+3];
-                            s[i][j+2] = temp1;
-                            s[i][j+3] = temp2;
-                            break;
-                    case 3: temp1 = s[i][j];
-                            s[i][j] = s[i][j+1];
-                            s[i][j+1] = s[i][j+2];
-                            s[i][j+2] = s[i][j+3];
-                            s[i][j+3] = temp1;
-                            break;
-                }
+                if(i == 0)
+                    s[current^1][i][j] = s[current][i][j];
+                else
+                    s[current^1][i][j] = s[current][i][(((j-i)%Nb)+4)%Nb];
             }
         }
-        return s;
+        current ^= 1;
+        return s[current];
     }
 
     // Applies inverse S-Box substitution to each byte of a state matrix
@@ -235,7 +212,8 @@ public class AES implements AbstractAES
                 s[current^1][n][i] = sum;
             }
         }
-        return s[current^1];
+        current ^= 1;
+        return s[current];
     }
 
     // Multiplies two polynomials a(x), b(x)
@@ -261,39 +239,20 @@ public class AES implements AbstractAES
     }
 
     // Applies a cyclic shift to the last 3 rows of a state matrix
-    private int[][] shiftRows(int[][] s)
+    private int[][] shiftRows(int[][][] s)
     {
-        int temp1 = 0, temp2 = 0;
-
-        for(int j = 0 ; j < Nb ; j+=4)
+        for(int i = 0 ; i < 4 ; i++)
         {
-            for(int i = 1 ; i < 4 ; i++)
+            for(int j = 0 ; j < 4 ; j++)
             {
-                switch(i)
-                {
-                    case 1: temp1 = s[i][j];
-                            s[i][j] = s[i][j+1];
-                            s[i][j+1] = s[i][j+2];
-                            s[i][j+2] = s[i][j+3];
-                            s[i][j+3] = temp1;
-                            break;
-                    case 2: temp1 = s[i][j];
-                            temp2 = s[i][j+1];
-                            s[i][j] = s[i][j+2];
-                            s[i][j+1] = s[i][j+3];
-                            s[i][j+2] = temp1;
-                            s[i][j+3] = temp2;
-                            break;
-                    case 3: temp1 = s[i][j+3];
-                            s[i][j+3] = s[i][j+2];
-                            s[i][j+2] = s[i][j+1];
-                            s[i][j+1] = s[i][j];
-                            s[i][j] = temp1;
-                            break;
-                }
+                if(i == 0)
+                    s[current^1][i][j] = s[current][i][j];
+                else
+                    s[current^1][i][j] = s[current][i][(j+i)%4];
             }
         }
-        return s;
+        current ^= 1;
+        return s[current];
     }
 
     // Applies S-Box substitution to each byte of a state matrix
@@ -316,12 +275,12 @@ public class AES implements AbstractAES
     // Applies S-box substitution to each byte of a 4-byte word
     private static int subWord(int w)
     {
-        int a0 = sBox[w >>> 24] <<24;
-        int a1 = sBox[(w << 8) >>> 24] << 16;
-        int a2 = sBox[(w << 16) >>> 24] << 8;
-        int a3 = sBox[(w << 24) >>> 24];
+        int b0 = sBox[w >>> 24] <<24;
+        int b1 = sBox[(w << 8) >>> 24] << 16;
+        int b2 = sBox[(w << 16) >>> 24] << 8;
+        int b3 = sBox[(w << 24) >>> 24];
 
-        return a0 & a1 & a2 & a3;
+        return b0 & b1 & b2 & b3;
     }
 
     // Applies a cyclic permutation to a 4-byte word
